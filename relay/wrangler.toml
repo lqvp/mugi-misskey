@@ -1,0 +1,26 @@
+# Copy and edit the [vars] values before `npx wrangler deploy`. No secrets live here:
+# the Misskey token and webhook secret are sent once to POST /stream/setup and kept in Durable Object storage.
+name = "misskey-devin-relay"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+DEVIN_WEBHOOK_URL = "https://app.devin.ai/api/webhooks/automations/org_EXAMPLE/auto-EXAMPLE"
+MISSKEY_ORIGIN = "https://misskey.example.com"
+BOT_USERNAME = "examplebot"
+# Optional: lets /stream/setup read the hook secret from Misskey instead of receiving it.
+MISSKEY_WEBHOOK_ID = ""
+
+[[durable_objects.bindings]]
+name = "STREAM"
+class_name = "MisskeyStream"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MisskeyStream"]
+
+[triggers]
+crons = ["* * * * *"]
+
+[observability]
+enabled = true
