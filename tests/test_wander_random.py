@@ -71,6 +71,17 @@ class Decide(unittest.TestCase):
         self.assertEqual(state["last_run"], jst(10, 17).timestamp())
         self.assertEqual(state["slots"], [15, 40])
 
+    def test_late_tick_does_not_break_the_gap(self):
+        first = jst(10, 15) + datetime.timedelta(seconds=40)
+        second = jst(10, 25) + datetime.timedelta(seconds=10)
+        state = {"hour": "2026-11-22T10", "slots": [15, 25], "last_run": None}
+        out, state = wr.decide(first, state, random.Random(0))
+        self.assertTrue(out["run"])
+        out, state = wr.decide(second, state, random.Random(0))
+        self.assertFalse(out["run"])
+        self.assertIn("too soon", out["reason"])
+        self.assertEqual(state["last_run"], first.timestamp())
+
     def test_same_hour_does_not_redraw(self):
         state = {"hour": "2026-11-22T10", "slots": [], "last_run": None}
         for minute in range(0, 60, 5):

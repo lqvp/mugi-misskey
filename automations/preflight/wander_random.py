@@ -62,6 +62,8 @@ def decide(now, state, rng):
     else:
         state = dict(state)
     if minute in state["slots"]:
+        if last_run and now.timestamp() - last_run < MIN_GAP * 60:
+            return {"run": False, "reason": f"too soon after the last run ({hour_key} now={minute})"}, state
         state["last_run"] = now.timestamp()
         return {"run": True}, state
     return {"run": False, "reason": f"not a slot ({hour_key} slots={state['slots']}, now={minute})"}, state
