@@ -1,0 +1,9 @@
+social/affinity.json
+social/state.json
+social/wander.json
+node_modules/
+.wrangler/
+.dev.vars
+__pycache__/
+*.pyc
+.env
