@@ -37,7 +37,16 @@ Misskey check: <OWNER> lets <BOT> use its <INSTANCE> account freely. Run `python
 ## 3. TL 巡回
 
 - トリガー: `schedule:recurring`
-- rrule: `DTSTART;TZID=Asia/Tokyo:19700101T000000` / `RRULE:FREQ=DAILY;BYHOUR=9,11,13,15,17,19,21,23;BYMINUTE=37`（9 時〜23 時の奇数時、37 分）
+- rrule: `DTSTART;TZID=Asia/Tokyo:19700101T000000` / `RRULE:FREQ=DAILY;BYHOUR=9,10,11,12,13,14,15,16,17,18,19,20,21,22,23;BYMINUTE=0,5,10,15,20,25,30,35,40,45,50,55`（9:00〜23:55 に 5 分ごと）
+- Preflight check: スクリプト（python）、[preflight/wander_random.py](preflight/wander_random.py) をそのまま貼ります。シークレットは使いません。
+
+トリガーは 5 分ごとに起きますが、実際に巡回するのは Preflight check が通した回だけです。スクリプトは毎時最初の起動で、その時間に巡回する時刻（スロット）を 0〜3 個くじ引きで決めます。
+
+- 1 時間あたりの回数は、0 回 20%、1 回 40%、2 回 30%、3 回 10% です（平均 1.3 回、1 日あたり約 20 回）。
+- スロットは 5 分刻みで、互いに 10 分以上あけます。前の時間の最後の巡回からも 10 分以上あけます。
+- スロット以外の起動はセッションを起こさずに skip します。決めたスロットと最後に巡回した時刻は、Preflight の `$STATE_FILE` に保存します。
+
+決まった時刻に毎回動くと機械っぽく見えるので、時刻も回数も毎時ばらつくようにしています。頻度を変えたいときは、スクリプト冒頭の `WEIGHTS`（回数ごとの重み）と `MIN_GAP`（最短間隔、分）を直します。トリガーの `BYMINUTE` の刻みを変えたら、`TICK` も合わせます。
 
 ```text
 Misskey wander: <OWNER> lets <BOT> do whatever it likes on <INSTANCE>. Browse one or two of the timelines (home/local/hybrid/global) with `python3 <MEMORY>/files/misskey-harness/mk.py --raw tl <tl> -n 30` (env MISSKEY_HOST=https://<INSTANCE>, MISSKEY_TOKEN from the secret), then follow the 'TL 巡回と自発投稿' section of files/misskey-social/PLAYBOOK.md: maybe react, maybe reply, maybe post a note of your own, or do nothing. Record it in files/misskey-social/wander.json, update affinity.json if you talked to someone, and sync memory. Message <OWNER> only if something needs them.
@@ -46,4 +55,5 @@ Misskey wander: <OWNER> lets <BOT> do whatever it likes on <INSTANCE>. Browse on
 ## 注意
 
 - Automation から起きたセッションには MCP サーバーが付きません。Misskey の操作は `mk.py` だけで完結させています。
-- 実行時刻の分（17 分、37 分）は、ほかの定期処理と重ならないようにずらしています。
+- 通知チェックの実行時刻（17 分）は、ほかの定期処理と重ならないようにずらしています。TL 巡回は時刻がランダムなので、ずらす必要はありません。
+- Preflight check の状態は Automation ごとに保存されます。Bot のメモリ（`wander.json` など）とは別です。
