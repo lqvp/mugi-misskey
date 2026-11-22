@@ -21,7 +21,7 @@ Devin の Bot「むぎ」が自分の Misskey アカウント（misskey.vip の 
         Bot の会話（むぎ本体）── harness/mk.py で Misskey API を操作
                                └ social/PLAYBOOK.md と好感度・カーソルの JSON を読み書き
         ▲
-        └─ 定期 Automation「通知チェック」（6 時間ごと）「TL 巡回」（1 日 8 回）
+        └─ 定期 Automation「通知チェック」（6 時間ごと）「TL 巡回」（毎時 0〜3 回ランダム）
 ```
 
 | 部品 | 場所 | 役割 |
@@ -29,7 +29,7 @@ Devin の Bot「むぎ」が自分の Misskey アカウント（misskey.vip の 
 | CLI | [harness/](harness/) | Python 標準ライブラリだけで書いた Misskey API クライアント（投稿・リプ・リアクション・TL・通知・フォローなど） |
 | 交流ルール | [social/](social/) | 口調・好感度・TL 巡回のルール（`PLAYBOOK.md`）と、状態を保存する JSON のひな形 |
 | リレー | [relay/](relay/) | Misskey と Devin の間に入る Cloudflare Worker と Durable Object |
-| Automation | [automations/](automations/) | Devin Automation 3 本のトリガー、プロンプト、LLM チェック |
+| Automation | [automations/](automations/) | Devin Automation 3 本のトリガー、プロンプト、LLM チェック、Preflight スクリプト |
 
 ## 中の振り分け（どのイベントが、どこで、何に処理されるか）
 
@@ -38,7 +38,7 @@ Devin の Bot「むぎ」が自分の Misskey アカウント（misskey.vip の 
 3. LLM チェックで選り分けます。 Automation の LLM チェック（Devin 側の判定モデル）が、イベントの種類と「行動した人」を見ます。bot フラグの付いたアカウントと自分自身からのイベントは、ここで落とします。セッションを起こす前に止まるので、無駄な実行が増えません。
 4. Bot 本体に届けます。 通ったイベントは `message_session`（`target_bot_id` 指定、`auto_create: false`）で Bot の会話に届きます。毎回新しいセッションを作るのではなく、記憶と人格を持った Bot 本体が受け取ります。応答に使うモデルは Bot に設定したエージェントモードのモデルです。このリポジトリではモデル名を決めていません。
 5. Bot が判断して動きます。 Bot は `PLAYBOOK.md` と好感度（`affinity.json`）を見て、返信・リアクション・フォロー返し・無視のどれかを選び、`mk.py` で実行します。最後に通知カーソル（`state.json`）を進め、メモリを同期します。
-6. 定期実行で取りこぼしを拾います。 「通知チェック」は 6 時間ごとに通知一覧を読み、Webhook で漏れた分を処理します。「TL 巡回」は 1 日 8 回 TL を眺め、気が向けばリアクション・リプ・独り言の投稿をします。何もしない回もあります。
+6. 定期実行で取りこぼしを拾います。 「通知チェック」は 6 時間ごとに通知一覧を読み、Webhook で漏れた分を処理します。「TL 巡回」は 9 時〜24 時のあいだ、毎時 0〜3 回、10 分以上あけたランダムな時刻に TL を眺め、気が向けばリアクション・リプ・独り言の投稿をします。何もしない回もあります。
 7. 重い作業は子セッションに任せます。 調査やコード変更のような大きな仕事は、Bot が子セッションに切り出します（このリポジトリ自体もその流れで作りました）。Misskey での日常のやり取りは Bot 本体だけで完結します。
 
 ## ディレクトリ
@@ -50,6 +50,7 @@ social/*.example.json  状態ファイルのひな形（本物は Bot のメモ�
 relay/worker.js        Cloudflare Worker + Durable Object
 relay/wrangler.toml    デプロイ設定（値はダミー）
 automations/README.md  Automation 3 本の設定
+automations/preflight/ TL 巡回の時刻をランダムに決める Preflight スクリプト
 docs/                  セットアップ手順と設計メモ（ADR）
 tests/, relay/test/    テスト
 ```

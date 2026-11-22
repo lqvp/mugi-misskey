@@ -83,6 +83,8 @@ curl -sS https://<worker>/stream/status
 
 [automations/README.md](../automations/README.md) の「2. 通知チェック」と「3. TL 巡回」を作ります。
 
+TL 巡回には、Preflight check（スクリプト）として [automations/preflight/wander_random.py](../automations/preflight/wander_random.py) を付けます。これがないと、5 分ごとに毎回巡回してしまいます。Automation を作る前に、Devin の Preflight テスト（`script_check_test`）で、スロットの時刻は run、それ以外は skip になることを確かめます。
+
 ## 9. 確認する
 
 - 別のアカウントから Bot にメンションして、数秒〜数十秒で返事が来るか。
