@@ -43,6 +43,34 @@ def api(endpoint, params=None, auth=True):
     return _send(req)
 
 
+EMOJI_CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "mugi-misskey-emojis.json")
+
+
+def emojis(max_age=6 * 3600):
+    """Custom emoji list of the instance, cached locally (it is large and changes slowly)."""
+    try:
+        if time.time() - os.path.getmtime(EMOJI_CACHE) < max_age:
+            return json.load(open(EMOJI_CACHE, encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    res = api("emojis", auth=False)["emojis"]
+    os.makedirs(os.path.dirname(EMOJI_CACHE), exist_ok=True)
+    json.dump(res, open(EMOJI_CACHE, "w", encoding="utf-8"), ensure_ascii=False)
+    return res
+
+
+def is_nsfw(e):
+    # Sensitive emoji are flagged on some instances; misskey.vip also files them under "えち" categories.
+    return e.get("isSensitive") or "えち" in (e.get("category") or "")
+
+
+def emoji_match(e, queries, category=None):
+    """Whether an emoji matches every query substring (name/aliases/category) and the category filter."""
+    hay = " ".join([e["name"], *e.get("aliases", []), e.get("category") or ""]).lower()
+    return all(q.lower() in hay for q in queries) and \
+        (not category or category.lower() in (e.get("category") or "").lower())
+
+
 def upload(path, name=None, folder_id=None, sensitive=False, comment=None):
     """Upload a local file to the drive (drive/files/create); returns the DriveFile."""
     b = uuid.uuid4().hex
@@ -126,6 +154,13 @@ def main():
     t.add_argument("-n", type=int, default=20)
     nt = s.add_parser("notifs"); nt.add_argument("-n", type=int, default=20)
     us = s.add_parser("user", help="show user + recent notes"); us.add_argument("acct"); us.add_argument("-n", type=int, default=10)
+    em = s.add_parser("emoji", help="search custom emoji by name/alias/category (use as :name:)")
+    em.add_argument("query", nargs="*", help="substrings; all must match (case-insensitive)")
+    em.add_argument("-n", type=int, default=40); em.add_argument("--category", help="substring of category")
+    em.add_argument("--categories", action="store_true", help="list categories with counts")
+    em.add_argument("--random", type=int, metavar="K", help="pick K random matches")
+    em.add_argument("--nsfw", action="store_true", help="include sensitive emoji (excluded by default)")
+    em.add_argument("--refresh", action="store_true", help="refetch the emoji list")
     for c in ("follow", "unfollow"):
         s.add_parser(c).add_argument("acct")
     up = s.add_parser("upload"); up.add_argument("path"); up.add_argument("--sensitive", action="store_true")
@@ -171,6 +206,24 @@ def main():
         res = api("notes/delete", {"noteId": o.note_id}) or {"ok": True}
     elif o.cmd == "react":
         res = api("notes/reactions/create", {"noteId": o.note_id, "reaction": o.reaction}) or {"ok": True}
+    elif o.cmd == "emoji":
+        es = [e for e in emojis(0 if o.refresh else 6 * 3600) if o.nsfw or not is_nsfw(e)]
+        if o.categories:
+            from collections import Counter
+            for c, k in Counter(e.get("category") or "(none)" for e in es).most_common():
+                print(f"{k:5} {c}")
+            return
+        es = [e for e in es if emoji_match(e, o.query, o.category)]
+        if o.random:
+            import random
+            es = random.sample(es, min(o.random, len(es)))
+        res = es[:o.n]
+        if not o.raw:
+            for e in res:
+                al = ",".join(e.get("aliases") or [])
+                print(f":{e['name']}:  [{e.get('category') or ''}] {al}")
+            print(f"({len(es)} matches)", file=sys.stderr)
+            return
     elif o.cmd == "tl":
         ep = {"home": "notes/timeline", "local": "notes/local-timeline", "hybrid": "notes/hybrid-timeline",
               "global": "notes/global-timeline"}[o.kind]

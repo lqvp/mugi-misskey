@@ -21,7 +21,8 @@ exec(command="python3 <MEMORY>/files/misskey-harness/mk.py me",
 | --- | --- |
 | `me` | 自分のプロフィール |
 | `note "本文" [--cw 注意書き] [--visibility home] [--reply ID] [--renote ID] [--file 画像パス]` | 投稿（本文を `-` にすると標準入力から読む。`--reply` は、相手が自分以外なら先頭に `@user` か `@user@host` を自動で付ける） |
-| `delete ID` / `react ID 👍` | 削除・リアクション |
+| `delete ID` / `react ID 👍` | 削除・リアクション（カスタム絵文字は `react ID :arigato:`） |
+| `emoji [語...] [--category カテゴリ] [--random K] [--categories] [-n 40]` | カスタム絵文字の検索（名前・別名・カテゴリの部分一致。一覧は `~/.cache` に6時間キャッシュ。センシティブは `--nsfw` を付けない限り除外） |
 | `tl [home\|local\|hybrid\|global] [-n 20]` | タイムライン |
 | `notifs [-n 20]` | 通知 |
 | `user @alice [-n 10]` | ユーザー情報と最近の投稿 |

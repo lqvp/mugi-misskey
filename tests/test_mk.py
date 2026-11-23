@@ -24,6 +24,43 @@ class WithMention(unittest.TestCase):
         self.assertIsNone(mk.with_mention(None, {"username": "alice", "host": None}, "bot"))
 
 
+class EmojiMatch(unittest.TestCase):
+    EMOJI = {"name": "arigato", "aliases": ["thanks"], "category": "Kotoba"}
+    NSFW = {"name": "etchi", "aliases": [], "category": "えちげーと"}
+    SENSITIVE = {"name": "warn", "aliases": [], "category": "Kotoba", "isSensitive": True}
+
+    def test_name_match(self):
+        self.assertTrue(mk.emoji_match(self.EMOJI, ["ariga"]))
+
+    def test_alias_and_category_match(self):
+        self.assertTrue(mk.emoji_match(self.EMOJI, ["thanks"], "koto"))
+
+    def test_case_insensitive(self):
+        self.assertTrue(mk.emoji_match(self.EMOJI, ["ARIGATO"]))
+
+    def test_all_queries_must_match(self):
+        self.assertFalse(mk.emoji_match(self.EMOJI, ["ariga", "nope"]))
+
+    def test_category_filter(self):
+        self.assertFalse(mk.emoji_match(self.EMOJI, ["ariga"], "blob"))
+
+    def test_no_category_on_emoji(self):
+        e = {"name": "plain", "aliases": []}
+        self.assertTrue(mk.emoji_match(e, ["plain"]))
+        self.assertFalse(mk.emoji_match(e, ["plain"], "blob"))
+
+
+class IsNsfw(unittest.TestCase):
+    def test_sensitive_flag(self):
+        self.assertTrue(mk.is_nsfw(EmojiMatch.SENSITIVE))
+
+    def test_etchi_category(self):
+        self.assertTrue(mk.is_nsfw(EmojiMatch.NSFW))
+
+    def test_normal(self):
+        self.assertFalse(mk.is_nsfw(EmojiMatch.EMOJI))
+
+
 class Token(unittest.TestCase):
     def test_missing_token_exits(self):
         env = mk.os.environ
